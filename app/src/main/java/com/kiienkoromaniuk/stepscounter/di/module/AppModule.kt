@@ -35,6 +35,17 @@ object AppModule {
                 .addDataType(DataType.TYPE_STEP_COUNT_DELTA)
                 .build()))
 
+    @Singleton
     @Provides
-    fun provideStepsRepository(recordingClient: RecordingClient,historyClient: HistoryClient) = StepsRepository(recordingClient,historyClient)
+    fun provideSensorsClient(@ApplicationContext appContext: Context): SensorsClient =
+        Fitness.getSensorsClient(appContext, GoogleSignIn.getAccountForExtension(appContext,
+            FitnessOptions.builder()
+                .addDataType(DataType.TYPE_STEP_COUNT_CUMULATIVE)
+                .addDataType(DataType.TYPE_STEP_COUNT_DELTA)
+                .build()))
+
+    @Provides
+    fun provideStepsRepository(recordingClient: RecordingClient,historyClient: HistoryClient,
+                               sensorsClient: SensorsClient) =
+        StepsRepository(recordingClient,historyClient,sensorsClient)
 }

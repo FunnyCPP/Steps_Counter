@@ -4,12 +4,16 @@ import android.util.Log
 import com.google.android.gms.fitness.*
 import com.google.android.gms.fitness.data.DataSet
 import com.google.android.gms.fitness.data.DataType
+import com.google.android.gms.fitness.request.OnDataPointListener
+import com.google.android.gms.fitness.request.SensorRequest
 import com.google.android.gms.tasks.OnSuccessListener
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 class StepsRepository @Inject constructor(
     private val recordingClient: RecordingClient,
-    private val historyClient: HistoryClient
+    private val historyClient: HistoryClient,
+    private val sensorsClient: SensorsClient
 ) {
     private val TAG= "StepsRepository"
 
@@ -38,7 +42,7 @@ class StepsRepository @Inject constructor(
      * Reads the current daily step total, computed from midnight of the current day on the device's
      * current timezone.
      */
-   fun readData(listener: OnSuccessListener<DataSet>) {
+   private fun readData(listener: OnSuccessListener<DataSet>) {
             historyClient
                 .readDailyTotal(DataType.TYPE_STEP_COUNT_DELTA)
                 .addOnSuccessListener(listener)
@@ -49,5 +53,22 @@ class StepsRepository @Inject constructor(
                     )
                 }
 
+    }
+    fun setDataPointListener(listener: OnDataPointListener)
+    {
+        sensorsClient.add(
+            SensorRequest.Builder()
+                // data sets.
+                .setDataType(DataType.TYPE_STEP_COUNT_DELTA)
+                .setSamplingRate(10, TimeUnit.SECONDS)
+                .build(),
+            listener
+        )
+            .addOnSuccessListener {
+                Log.i(TAG, "Data Point Listener registered!")
+            }
+            .addOnFailureListener {
+                Log.e(TAG, "Data Point Listener not registered.")
+            }
     }
 }

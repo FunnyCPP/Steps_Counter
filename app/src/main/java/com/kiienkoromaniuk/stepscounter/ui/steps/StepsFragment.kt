@@ -51,6 +51,10 @@ class StepsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         fitSignIn()
+        setDataPointListener()
+        viewModel.steps.observe(viewLifecycleOwner,{steps->
+            binding.steps.text = "Steps: $steps"
+        })
     }
 
 
@@ -85,15 +89,11 @@ class StepsFragment : Fragment() {
     }
 
     private fun getSteps() {
-        val listener = OnSuccessListener<DataSet> { dataSet->
-            val total = when {
-                dataSet.isEmpty -> 0
-                else -> dataSet.dataPoints.first().getValue(Field.FIELD_STEPS).asInt()
-            }
-            Log.i(TAG, "Total steps: $total")
-            binding.steps.text = "Total steps: $total"
-        }
-        viewModel.subscribe(listener)
+        viewModel.subscribe()
+    }
+
+    private fun setDataPointListener(){
+        viewModel.setDataPointListener()
     }
 
     private fun oAuthErrorMsg(requestCode: Int, resultCode: Int) {
