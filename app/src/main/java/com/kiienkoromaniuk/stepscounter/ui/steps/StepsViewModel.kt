@@ -42,7 +42,7 @@ class StepsViewModel @Inject constructor(
                 Log.i(TAG, "Detected DataPoint value: $value")
                 currentSteps +=value.asInt()
 
-                steps.postValue(currentSteps + value.asInt())
+                steps.postValue(currentSteps+10000)
                 Log.i(TAG,"Live Data updated by $value")
             }
         }

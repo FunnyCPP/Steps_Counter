@@ -3,9 +3,12 @@
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="action_settings">Settings</string>
-    <string name="permission_rationale">Location data is used as part of the Google Fit API</string>
-    <string name="permission_denied_explanation">Permission was denied, but is needed for core
-        functionality.</string>
+    <string name="permission_rationale">Dane o lokalizacji są wykorzystywane w ramach Google Fit API</string>
+    <string name="qauth_error">Wygląda na to, że nie wybrałeś konta. Proszę spróbuj ponownie</string>
+    <string name="permission_denied_explanation">Uprawnienie zostało odrzucone, ale jest potrzebne do podstawowej funkcjonalności.</string>
     <string name="settings">Settings</string>
     <string name="ok">OK</string>
+    <string name="steps_default">0 / 10000 kroków</string>
+    <string name="steps">kroków</string>
+    <string name="steps_title">Liczba kroków</string>
 </resources>

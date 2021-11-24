@@ -28,7 +28,7 @@ const val TAG="StepsCounter"
 @AndroidEntryPoint
 class StepsFragment : Fragment() {
 
-    private val requestCode = 1
+    private val requestCode = 155
 
     //Setting fitness options for Google Fit API
     private val fitnessOptions = FitnessOptions.builder()
@@ -56,10 +56,19 @@ class StepsFragment : Fragment() {
         checkPermissionsAndRun()
 
         viewModel.steps.observe(viewLifecycleOwner,{steps->
-            binding.steps.text = "Steps: $steps"
+            binding.steps.text = "$steps / ${getTargetSteps(steps)} "+ requireContext().getString(R.string.steps)
+            binding.progressBar.max = getTargetSteps(steps)
+            binding.progressBar.progress = steps
         })
     }
 
+    private fun getTargetSteps(steps: Int): Int{
+            var target = 10000
+            while(steps > target)
+                target+=5000
+        return target
+
+    }
     private fun checkPermissionsAndRun(){
         if (permissionApproved()) {
             fitSignIn()
@@ -108,9 +117,13 @@ class StepsFragment : Fragment() {
 
         when (resultCode) {
             AppCompatActivity.RESULT_OK -> {
+                Log.i(TAG, "QAuth sign in: RESULT_OK")
                 getSteps()
             }
-            else -> oAuthErrorMsg(resultCode)
+            else -> {
+                oAuthErrorMsg(resultCode)
+                showSnackBarError()
+            }
         }
     }
     //Gets steps from HistoryClient
@@ -126,6 +139,17 @@ class StepsFragment : Fragment() {
     private fun setDataPointListener(){
         viewModel.setDataPointListener()
     }
+    //QAuth error
+    private fun showSnackBarError(){
+        Snackbar.make(
+            binding.root,
+            R.string.qauth_error,
+            Snackbar.LENGTH_INDEFINITE)
+            .setAction(R.string.ok) {
+                fitSignIn()
+            }
+            .show()
+    }
 
     private fun oAuthErrorMsg( resultCode: Int) {
         val message = """
@@ -134,6 +158,7 @@ class StepsFragment : Fragment() {
             Result code was: $resultCode
         """.trimIndent()
         Log.e(TAG, message)
+
     }
 
     private fun oAuthPermissionsApproved() = GoogleSignIn.hasPermissions(getGoogleAccount(), fitnessOptions)
@@ -147,8 +172,11 @@ class StepsFragment : Fragment() {
     private fun permissionApproved(): Boolean {
         val approved = if (runningQOrLater) {
             PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION)
+                    requireContext(),
+                    Manifest.permission.ACCESS_FINE_LOCATION) &&
+                    PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACTIVITY_RECOGNITION)
         } else {
             true
         }
@@ -157,10 +185,9 @@ class StepsFragment : Fragment() {
 
     private fun requestRuntimePermissions() {
         val shouldProvideRationale =
-            ActivityCompat.shouldShowRequestPermissionRationale(requireActivity(), Manifest.permission.ACCESS_FINE_LOCATION)
-
+            ActivityCompat.shouldShowRequestPermissionRationale(requireActivity(), Manifest.permission.ACCESS_FINE_LOCATION) ||
+                    ActivityCompat.shouldShowRequestPermissionRationale(requireActivity(), Manifest.permission.ACTIVITY_RECOGNITION)
         // Provide an additional rationale to the user.
-        requestCode.let {
             if (shouldProvideRationale) {
                 Log.i(TAG, "Displaying permission rationale to provide additional context.")
                 Snackbar.make(
@@ -169,25 +196,28 @@ class StepsFragment : Fragment() {
                     Snackbar.LENGTH_INDEFINITE)
                     .setAction(R.string.ok) {
                         // Request permission
-                        ActivityCompat.requestPermissions(requireActivity(),
-                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACTIVITY_RECOGNITION),
+                        requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACTIVITY_RECOGNITION),
                             requestCode)
                     }
                     .show()
             } else {
                 Log.i(TAG, "Requesting permission")
-                ActivityCompat.requestPermissions(requireActivity(),
-                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACTIVITY_RECOGNITION),requestCode)
+                requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACTIVITY_RECOGNITION),requestCode)
             }
-        }
     }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>,
                                             grantResults: IntArray) {
+        Log.i(TAG, "onRequestPermissionsResult")
         when {
             grantResults.isEmpty() -> {
                 Log.i(TAG, "User interaction was cancelled.")
             }
             grantResults[0] == PackageManager.PERMISSION_GRANTED -> {
+                Log.i(TAG, "Permissions granted")
+                if(permissionApproved())
+                    fitSignIn()
+                else
+                    requestRuntimePermissions()
             }
             else -> {
                 Snackbar.make(
