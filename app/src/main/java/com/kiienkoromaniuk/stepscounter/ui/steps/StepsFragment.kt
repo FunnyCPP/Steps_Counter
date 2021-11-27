@@ -1,9 +1,11 @@
 package com.kiienkoromaniuk.stepscounter.ui.steps
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -21,6 +23,8 @@ import com.google.android.material.snackbar.Snackbar
 import com.kiienkoromaniuk.stepscounter.BuildConfig
 import com.kiienkoromaniuk.stepscounter.R
 import com.kiienkoromaniuk.stepscounter.databinding.FragmentStepsBinding
+import com.kiienkoromaniuk.stepscounter.utils.PermissionStatus
+import com.kiienkoromaniuk.stepscounter.utils.requestPermissionLauncher
 import dagger.hilt.android.AndroidEntryPoint
 
 const val TAG="StepsCounter"
@@ -30,14 +34,29 @@ class StepsFragment : Fragment() {
 
     private val requestCode = 155
 
+    private val permissionsLauncher by requestPermissionLauncher { status ->
+        when(status) {
+            PermissionStatus.Granted -> {
+                Log.i(TAG,"Permission status: Granted")
+                checkPermissionsAndRun()
+            }
+            PermissionStatus.Denied -> {
+                Log.i(TAG,"Permission status: Denied")
+                requestRuntimePermissions(PermissionStatus.Denied)
+            }
+            PermissionStatus.ShowRationale -> {
+                Log.i(TAG,"Permission status: ShowRationale")
+                requestRuntimePermissions(PermissionStatus.ShowRationale)
+            }
+        }
+    }
+
     //Setting fitness options for Google Fit API
     private val fitnessOptions = FitnessOptions.builder()
         .addDataType(DataType.TYPE_STEP_COUNT_CUMULATIVE)
         .addDataType(DataType.TYPE_STEP_COUNT_DELTA)
         .build()
 
-    private val runningQOrLater =
-        android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q
 
     private val viewModel: StepsViewModel by viewModels()
 
@@ -52,6 +71,7 @@ class StepsFragment : Fragment() {
         return binding.root
     }
 
+    @SuppressLint("SetTextI18n")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         checkPermissionsAndRun()
 
@@ -73,7 +93,7 @@ class StepsFragment : Fragment() {
         if (permissionApproved()) {
             fitSignIn()
         } else {
-            requestRuntimePermissions()
+            requestRuntimePermissions(null)
         }
     }
     /**
@@ -92,23 +112,6 @@ class StepsFragment : Fragment() {
             }
         }
     }
-
-    /**
-     * Sets the result launcher for getting callback from the QAuth sign in
-     * TODO fix bug with infinity activity launching
-     */
-   /* private fun setResultLauncher() {
-        val resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            when (result.resultCode) {
-                AppCompatActivity.RESULT_OK -> {
-                    getSteps()
-                }
-                else -> oAuthErrorMsg( result.resultCode)
-            }
-        }
-        val intent = Intent(requireContext(), MainActivity::class.java)
-        resultLauncher.launch(intent)
-    }*/
     /**
      * Handles the callback from the OAuth sign in flow, executing the post sign in function
      * TODO replace this function to result launcher
@@ -170,56 +173,49 @@ class StepsFragment : Fragment() {
     //------------------------
 
     private fun permissionApproved(): Boolean {
-        val approved = if (runningQOrLater) {
-            PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
-                    requireContext(),
-                    Manifest.permission.ACCESS_FINE_LOCATION) &&
-                    PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
-                    requireContext(),
-                    Manifest.permission.ACTIVITY_RECOGNITION)
-        } else {
-            true
+        var approved = true
+        for(i in getPermissionsArray())
+        {
+            if(PackageManager.PERMISSION_GRANTED != ActivityCompat.checkSelfPermission(
+                    requireContext(), i))
+                        approved =false
         }
         return approved
     }
+    private fun getPermissionsArray(): Array<String>
+    {
+           return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+               arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACTIVITY_RECOGNITION)
+           } else {
+               arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+           }
+    }
 
-    private fun requestRuntimePermissions() {
-        val shouldProvideRationale =
-            ActivityCompat.shouldShowRequestPermissionRationale(requireActivity(), Manifest.permission.ACCESS_FINE_LOCATION) ||
-                    ActivityCompat.shouldShowRequestPermissionRationale(requireActivity(), Manifest.permission.ACTIVITY_RECOGNITION)
-        // Provide an additional rationale to the user.
-            if (shouldProvideRationale) {
-                Log.i(TAG, "Displaying permission rationale to provide additional context.")
+    private fun requestRuntimePermissions(permissionStatus: PermissionStatus?) {
+        when(permissionStatus)
+        {
+            null ->{
+                var shouldProvideRationale = false
+                for (i in getPermissionsArray()) {
+                    if(ActivityCompat.shouldShowRequestPermissionRationale(requireActivity(), i))
+                        shouldProvideRationale = true
+                }
+                if (shouldProvideRationale)
+                    PermissionStatus.ShowRationale
+                permissionsLauncher.launch(getPermissionsArray())
+            }
+            PermissionStatus.ShowRationale -> {
                 Snackbar.make(
                     binding.root,
                     R.string.permission_rationale,
                     Snackbar.LENGTH_INDEFINITE)
                     .setAction(R.string.ok) {
                         // Request permission
-                        requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACTIVITY_RECOGNITION),
-                            requestCode)
+                        permissionsLauncher.launch(getPermissionsArray())
                     }
                     .show()
-            } else {
-                Log.i(TAG, "Requesting permission")
-                requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACTIVITY_RECOGNITION),requestCode)
             }
-    }
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>,
-                                            grantResults: IntArray) {
-        Log.i(TAG, "onRequestPermissionsResult")
-        when {
-            grantResults.isEmpty() -> {
-                Log.i(TAG, "User interaction was cancelled.")
-            }
-            grantResults[0] == PackageManager.PERMISSION_GRANTED -> {
-                Log.i(TAG, "Permissions granted")
-                if(permissionApproved())
-                    fitSignIn()
-                else
-                    requestRuntimePermissions()
-            }
-            else -> {
+            PermissionStatus.Denied ->{
                 Snackbar.make(
                     binding.root,
                     R.string.permission_denied_explanation,
@@ -236,8 +232,10 @@ class StepsFragment : Fragment() {
                     }
                     .show()
             }
+            PermissionStatus.Granted ->{
+               checkPermissionsAndRun()
+            }
         }
     }
-
 
 }

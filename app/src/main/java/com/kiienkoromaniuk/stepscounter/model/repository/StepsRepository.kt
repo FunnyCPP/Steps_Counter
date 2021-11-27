@@ -10,12 +10,14 @@ import com.google.android.gms.tasks.OnSuccessListener
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
+const val TAG= "StepsRepository"
+
 class StepsRepository @Inject constructor(
     private val recordingClient: RecordingClient,
     private val historyClient: HistoryClient,
     private val sensorsClient: SensorsClient
 ) {
-    private val TAG= "StepsRepository"
+
 
      fun subscribe(listener: OnSuccessListener<DataSet>) {
             // To create a subscription, invoke the Recording API. As soon as the subscription is

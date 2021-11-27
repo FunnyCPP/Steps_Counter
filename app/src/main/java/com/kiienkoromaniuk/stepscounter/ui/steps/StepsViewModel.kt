@@ -1,7 +1,6 @@
 package com.kiienkoromaniuk.stepscounter.ui.steps
 
 import android.util.Log
-import androidx.core.graphics.createBitmap
 import androidx.lifecycle.*
 import com.google.android.gms.fitness.data.DataSet
 import com.google.android.gms.fitness.data.Field
@@ -9,8 +8,6 @@ import com.google.android.gms.fitness.request.OnDataPointListener
 import com.google.android.gms.tasks.OnSuccessListener
 import com.kiienkoromaniuk.stepscounter.model.repository.StepsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 
